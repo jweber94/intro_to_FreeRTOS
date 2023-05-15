@@ -34,40 +34,6 @@ void printToSerialInteraction(char* msg) {
   }
 }
 
-unsigned int readoutBuffer() {
-  // readout serial receive buffer
-  uint32_t pos = 0;
-  while (0 < Serial.available()) {
-    char inByte = Serial.read();
-    if ('\n' != inByte) { // assume \n termination from the serial input - could be adjusted within the serial monitor of the ardurino IDE
-      buffer_arr[pos] = inByte;
-    }
-    pos++;
-  }
-  // add null termination to the string
-  buffer_arr[pos] = '\n';
-  unsigned int result = atoi(buffer_arr);
-  return result;
-}
-
-uint32_t readSerialInput(unsigned int & newBlinkyVal) { // TODO: change return value to status code
-  /*
-    Return 0 if it could read out something and something valid, else 1 as a status code
-  */
-  uint32_t availBytes = Serial.available();
-  if (availBytes > 0 && availBytes < max_buffer_length) { // assume \n termination of the input and therefore do not use the max_buffer_length - 1
-    // there is something to read out
-    newBlinkyVal = readoutBuffer();
-    return 0;
-  } else {
-    // invalid readout of the serial receive buffer
-    while(0 < Serial.available()) { // clear buffer for the next message if there is something within the buffer
-      Serial.read();
-    }
-    return 1;
-  }
-}
-
 // task functions
 void blinkyFunction(void* params) {
   pinMode(led_pin, OUTPUT);
@@ -89,21 +55,32 @@ void serialInputFunction(void* params) {
   Serial.begin(300);
   unsigned int newBlinkyVal = 0;
   unsigned int oldBlinkyVal = 0;
-  
+  unsigned int idx = 0;
   while(1) {
     msgToUse = NULL;
     // check and validate value change
-    if (readSerialInput(newBlinkyVal)) {
-      msgToUse = successMsg;
-      // change the value
-      blinkyTime = newBlinkyVal;
-      oldBlinkyVal = newBlinkyVal;
-    } else {
-      msgToUse = errorMsg;
-    } 
-    // print and sleep until the next iteration of the task
-    if (oldBlinkyVal != newBlinkyVal) {
-      printToSerialInteraction(msgToUse); // TODO: Add parameter for the value to print
+    if (Serial.available() > 0) {
+      char tmpVal = Serial.read();
+      if (tmpVal != '\n' && idx < max_buffer_length) {
+        buffer_arr[idx] = tmpVal;
+        idx++;
+      } else if (tmpVal == '\n' && idx < max_buffer_length) {
+        // nullterminate the string
+        buffer_arr[idx] = '\0'; 
+        // convert to int
+        printToSerialInteraction("Update blinky time to:");
+        printToSerialInteraction(buffer_arr);
+        blinkyTime = atoi(buffer_arr);
+        // reset
+        memset(buffer_arr, 0, max_buffer_length);
+        idx = 0;
+      } else {
+        printToSerialInteraction("Your input was too long. Please try again!");
+        // reset
+        memset(buffer_arr, 0, max_buffer_length);
+        idx = 0;
+      }
+
     }
     vTaskDelay(100 / portTICK_PERIOD_MS);
   }
