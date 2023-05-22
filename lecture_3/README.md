@@ -42,5 +42,11 @@ In this lecture we will learn about the task model in real time operating system
 + https://www.freertos.org/implementation/a00026.html
     - Theory Context switches
 
-## TODO
-+ Bugfix of the homework assignment
+## Learnings from the homework
++ We need to clean the buffer to have it properly interpreted by `atoi`
+    - This is done in C with `memset(target_ptr_start_address, value, length_of_memory)`
++ To allocate memory on the heap, we need `char* mem = malloc(sizeinbytes)`
++ To copy memory from one chunk of memory on the heap (or stack to heap or reverse), we need `memcpy`
++ The [serial interface](https://www.arduino.cc/reference/en/language/functions/communication/serial/) reads from the hardware serial buffer and can be read out byte by byte
+    - There is no interpretation of datatypes on this level of abstraction. This needs to be done after we saved the serialized data to a buffer in RAM and then use the RAM and the program logic to interpret the received data
+        * Make sure you have format checking
